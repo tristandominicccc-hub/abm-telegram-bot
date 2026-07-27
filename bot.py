@@ -10,7 +10,7 @@ from telegram.ext import (
 
 import os
 
-BOT_TOKEN = os.getenv("8618805037:AAH00DJipDu2aqd7iNbM1lp1ConeypwbImY")
+BOT_TOKEN = os.getenv("8618805037:AAG-xrHiB9Qg_Ni9ZGytGt-m_MXfSzXutaw")
 
 # Load products
 def load_products():
