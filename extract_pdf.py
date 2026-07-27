@@ -1,6 +1,6 @@
 import fitz
-import re
 import json
+import re
 
 PDF_FILE = "Inventory.pdf"
 OUTPUT_FILE = "products.json"
@@ -9,49 +9,87 @@ doc = fitz.open(PDF_FILE)
 
 products = []
 
+# Regex
+item_regex = re.compile(r'^\d+$')
+barcode_regex = re.compile(r'^\d{12,14}$')
+price_regex = re.compile(r'^\d+\.\d+$')
+
 for page in doc:
-    text = page.get_text()
 
-    for line in text.split("\n"):
+    lines = [l.strip() for l in page.get_text().splitlines() if l.strip()]
 
-        line = line.strip()
+    i = 0
 
-        if not line:
-            continue
+    while i < len(lines):
 
-        # Find a barcode (12-14 digits)
-        barcode_match = re.search(r"\b\d{12,14}\b", line)
+        # Look for item number
+        if item_regex.fullmatch(lines[i]):
 
-        if not barcode_match:
-            continue
+            item_no = lines[i]
+            i += 1
 
-        barcode = barcode_match.group()
+            block = []
 
-        before = line[:barcode_match.start()].strip()
-        after = line[barcode_match.end():].strip()
+            # Collect everything until next item number
+            while i < len(lines) and not item_regex.fullmatch(lines[i]):
+                block.append(lines[i])
+                i += 1
 
-        # Remove item number
-        before = re.sub(r"^\d+\s+", "", before)
+            barcode = None
+            barcode_index = -1
 
-        name = before.strip()
+            # Find barcode
+            for idx, value in enumerate(block):
+                if barcode_regex.fullmatch(value):
+                    barcode = value
+                    barcode_index = idx
+                    break
 
-        # Selling price comes after cost price
-        prices = re.findall(r"\d+\.\d+", after)
+            if barcode is None:
+                continue
 
-        if len(prices) < 2:
-            continue
+            # Product name = everything before barcode
+            name = " ".join(block[:barcode_index]).strip()
 
-        selling_price = float(prices[1])
+            # Remove leading item code stuck to the name
+            name = re.sub(r'^\d+', '', name).strip()
 
-        products.append({
-            "name": name,
-            "barcode": barcode,
-            "price": selling_price
-        })
+            # Find all decimal numbers after barcode
+            decimals = []
+
+            for value in block[barcode_index + 1:]:
+
+                clean = value.replace(",", "")
+
+                if price_regex.fullmatch(clean):
+                    decimals.append(float(clean))
+
+            if len(decimals) < 2:
+                continue
+
+            selling_price = decimals[1]
+
+            products.append({
+                "item_no": item_no,
+                "name": name,
+                "barcode": barcode,
+                "price": selling_price
+            })
+
+        else:
+            i += 1
 
 doc.close()
+
+# Remove duplicate barcodes
+unique = {}
+
+for p in products:
+    unique[p["barcode"]] = p
+
+products = list(unique.values())
 
 with open(OUTPUT_FILE, "w", encoding="utf-8") as f:
     json.dump(products, f, indent=4, ensure_ascii=False)
 
-print(f"Saved {len(products)} products.")
+print(f"✅ Saved {len(products)} products.")
