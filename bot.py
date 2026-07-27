@@ -8,7 +8,9 @@ from telegram.ext import (
     filters,
 )
 
-BOT_TOKEN = "8618805037:AAFKN22AqxmIb7G714SWV9f2ejWHU4qzA0c"
+import os
+
+BOT_TOKEN = os.getenv("8618805037:AAFKN22AqxmIb7G714SWV9f2ejWHU4qzA0c")
 
 # Load products
 def load_products():
